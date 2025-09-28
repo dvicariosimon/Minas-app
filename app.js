@@ -1,9 +1,10 @@
-// app.js — versión remota para el loader
-// Debe definir window.__mines_boot(root)
-
-(function(){
-  // 1) Inyecta CSS necesario
-  const CSS = `
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mines ww2</title>
+  <style>
     :root{
       --bg:#0f1220;--card:#171a2b;--muted:#8b93b0;--text:#e7eafa;--accent:#6ee7b7;--warn:#facc15;--danger:#f87171;--safe:#1f2937;--border:#242842;
     }
@@ -27,7 +28,7 @@
     .btn:hover{transform:translateY(-1px);background:#101737}
     .btn.primary{background:var(--accent);color:#08111a;border:none}
     .btn.danger{background:#2a0f13;border-color:#681d24;color:#ffdada}
-    .btn.warning{background:#2a210f;border-color:#5a1a1a;color:#fff1c2}
+    .btn.warning{background:#2a210f;border-color:#6b5a1a;color:#fff1c2}
     .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
     .stat{background:#0c1022;border:1px solid var(--border);padding:10px;border-radius:12px}
     .stat .v{font-size:18px;font-weight:700}
@@ -43,6 +44,7 @@
     footer{padding:12px 16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:12px}
     .radio{display:flex;gap:10px;align-items:center}
     .radio input{accent-color:#93c5fd}
+    /* === Mobile optimizations === */
     @media (hover:hover){ .cell:hover{ transform:translateY(-1px) } }
     @media (hover:none){ .cell:hover{ transform:none } }
     .cell{ touch-action:manipulation }
@@ -55,26 +57,20 @@
       .btn{width:100%}
       .stats{grid-template-columns:1fr}
     }
+    /* Compact mode toggle */
     body.compact .grid{gap:4px}
     body.compact .cell{border-radius:10px}
     body.compact .badge{display:none}
     body.compact .card{padding:10px}
+    /* Ocultar botón Reset saldo para apariencia profesional */
     #resetBalance{ display:none !important; }
-  `;
-  function injectCSSOnce(){
-    if (document.getElementById('__mines_css')) return;
-    const style = document.createElement('style');
-    style.id = '__mines_css';
-    style.textContent = CSS;
-    document.head.appendChild(style);
-  }
-
-  // 2) HTML interno (solo el contenido del <body>)
-  const HTML = `
+  </style>
+</head>
+<body>
   <div class="container">
     <div class="app">
       <header>
-        <h1>Minas anti ludopatas <span class="pill">Web</span></h1>
+        <h1>Mines ww2 <span class="pill">Web</span></h1>
         <button type="button" id="resetBalance" class="btn danger" hidden aria-hidden="true" tabindex="-1">Reset saldo</button>
       </header>
       <div class="wrap">
@@ -117,6 +113,7 @@
           </div>
           <div class="msg" id="message"></div>
         </div>
+
         <div class="card">
           <h2>Tablero 5×5</h2>
           <div id="board" class="grid" aria-label="Tablero"></div>
@@ -124,18 +121,20 @@
       </div>
       <footer>
         <div>Tip: puedes usar el teclado (A–E,1–5) para revelar una celda, por ejemplo: <b>A1</b>, <b>C3</b>.</div>
-        <div id="verTag" style="user-select:none;cursor:default">v2.1 (remoto)</div>
+        <div id="verTag" style="user-select:none;cursor:default">v2.1</div>
       </footer>
     </div>
   </div>
+
   <template id="cellTemplate">
     <button class="cell" data-r="0" data-c="0" aria-label="Celda"></button>
   </template>
-  `;
 
-  // 3) Lógica del juego (idéntica a tu v2.1 local)
-  function bootGame(){
+  <script>
+  // ---- LOCAL APP BOOT WRAPPED (for auto-update loader) ----
+  window.__mines_local_boot = ()=>{
     const GRID_SIZE = 5;
+
     const els = {
       board: document.getElementById('board'),
       balance: document.getElementById('balance'),
@@ -159,27 +158,39 @@
       balance: 100.00,
       bet: 10.00,
       mines: 3,
-      edge: 0.02,
+      edge: 0.02, // 2% fijo
       revealed: new Set(),
       mineCells: new Set(),
       finished: true,
       busted: false,
     };
 
+    // LocalStorage para saldo persistente y preferencias
     const LS_KEY = 'mines_apuestas_balance_v1';
     const LS_PREFS = 'mines_apuestas_prefs_v1';
     let saved = null;
     try { saved = localStorage.getItem(LS_KEY); } catch {}
-    if (saved != null && !isNaN(parseFloat(saved))) state.balance = parseFloat(saved);
-    else { state.balance = 100.00; try { localStorage.setItem(LS_KEY, String(state.balance.toFixed(2))); } catch {} }
+    if (saved != null && !isNaN(parseFloat(saved))) {
+      state.balance = parseFloat(saved);
+    } else {
+      state.balance = 100.00;
+      try { localStorage.setItem(LS_KEY, String(state.balance.toFixed(2))); } catch {}
+    }
 
-    function saveBalance(){ try{ localStorage.setItem(LS_KEY, String(state.balance.toFixed(2))); }catch{} }
-    function savePrefs(){ try{ localStorage.setItem(LS_PREFS, JSON.stringify({
-      showCoords: els.showCoords.checked,
-      confirm: els.confirmClicks.checked,
-      compact: els.compactMode.checked,
-      haptics: els.haptics.checked
-    })); }catch{} }
+    function saveBalance(){
+      try { localStorage.setItem(LS_KEY, String(state.balance.toFixed(2))); }
+      catch (e) { console.warn('[Mines Web] No se pudo guardar en localStorage:', e); }
+    }
+    function savePrefs(){
+      try {
+        localStorage.setItem(LS_PREFS, JSON.stringify({
+          showCoords: els.showCoords.checked,
+          confirm: els.confirmClicks.checked,
+          compact: els.compactMode.checked,
+          haptics: els.haptics.checked
+        }));
+      } catch {}
+    }
 
     function indexToCoord(r,c){ return String.fromCharCode('A'.charCodeAt(0)+c) + (r+1); }
     function coordToIndex(coord){
@@ -190,11 +201,13 @@
       if (isNaN(row)||row<0||row>=GRID_SIZE||col<0||col>=GRID_SIZE) throw new Error('Coordenada fuera de rango');
       return [row,col];
     }
+
     function fairMultiplierAfterXPicks(totalCells, mines, x, houseEdge){
       const N = totalCells; const S = N - mines; if (x<0||x>S) return 0;
       let prod = 1.0; for (let i=0;i<x;i++){ prod *= (N - i) / (S - i); }
       return prod * (1.0 - houseEdge);
     }
+
     function formatMoney(n){ return `$ ${Number(n).toFixed(2)}`; }
 
     function updateHUD(){
@@ -205,12 +218,14 @@
       els.potential.textContent = formatMoney(potential);
       els.balance.textContent = formatMoney(state.balance);
 
+      // Mantiene inputs sincronizados con estado visible
       const betVal = parseFloat(els.bet.value);
       const betSafe = isNaN(betVal) ? 0 : Math.max(0, betVal);
       els.bet.value = isNaN(betVal) ? '' : betSafe.toFixed(2);
       els.mines.value = state.mines;
       els.edge.value = (state.edge*100).toFixed(1);
 
+      // Botón cashout con monto actual
       if (!state.finished && !state.busted) {
         els.cashout.textContent = `Cobrar ${formatMoney(potential)}`;
         els.cashout.setAttribute('aria-label', `Cobrar ${formatMoney(potential)}`);
@@ -219,8 +234,9 @@
         els.cashout.setAttribute('aria-label', 'Cobrar (Cashout)');
       }
 
+      // Botón Apostar con monto del input y validación
       els.newGame.textContent = `Apostar ${formatMoney(betSafe)}`;
-      const betValid = (betSafe > 0 && betSafe <= state.balance) && state.finished;
+      const betValid = (betSafe > 0 && betSafe <= state.balance) && state.finished; // deshabilita si hay partida activa
       els.newGame.disabled = !betValid;
       els.newGame.setAttribute('aria-disabled', String(!betValid));
     }
@@ -237,6 +253,7 @@
       }
       paintBoard();
     }
+
     function paintBoard(revealAll=false){
       const children = els.board.children;
       for (let i=0;i<children.length;i++){
@@ -251,7 +268,9 @@
           btn.textContent = isMine? '💥':'💎';
         } else {
           btn.textContent = '';
-          if (revealAll && state.mineCells.has(key)) btn.textContent = '💣';
+          if (revealAll && state.mineCells.has(key)){
+            btn.textContent = '💣';
+          }
         }
         if (els.showCoords.checked){
           const lab = indexToCoord(r,c);
@@ -261,12 +280,14 @@
         }
       }
     }
+
     function message(txt, type='info'){
       els.message.textContent = txt;
       if (type==='error') els.message.style.color = 'var(--danger)';
       else if (type==='warn') els.message.style.color = 'var(--warn)';
       else els.message.style.color = 'var(--muted)';
     }
+
     function haptic(kind){
       if (!els.haptics.checked) return;
       if (!('vibrate' in navigator)) return;
@@ -274,6 +295,7 @@
       else if (kind==='safe') navigator.vibrate(20);
       else if (kind==='cash') navigator.vibrate([30,30,60]);
     }
+
     function randomMines(count){
       const positions = [];
       for (let r=0;r<GRID_SIZE;r++) for (let c=0;c<GRID_SIZE;c++) positions.push([r,c]);
@@ -288,6 +310,7 @@
 
     function newGame(){
       if (!state.finished) { message('Ya hay una partida activa. Cobra o finaliza antes de iniciar otra.', 'warn'); return; }
+      // Lee apuesta directamente del input para que el usuario controle el monto
       const raw = els.bet.value;
       const bet = parseFloat(String(raw).replace(',','.'));
       const mines = parseInt(els.mines.value,10);
@@ -296,7 +319,7 @@
       if (!(mines>=1 && mines <= (GRID_SIZE*GRID_SIZE-1))) return message('Número de minas inválido', 'error');
       state.bet = parseFloat(bet.toFixed(2));
       state.mines = mines;
-      state.edge = 0.02;
+      state.edge = 0.02; // 2% fijo
       state.balance = +(state.balance - state.bet).toFixed(2);
       saveBalance();
 
@@ -307,6 +330,7 @@
       updateHUD();
       paintBoard();
     }
+
     function reveal(r,c){
       if (state.finished) return;
       const key = `${r},${c}`; if (state.revealed.has(key)) return;
@@ -325,7 +349,9 @@
       }
       updateHUD();
     }
+
     function onCellClick(r,c){ reveal(r,c); }
+
     function cashout(){
       if (state.finished) return;
       const x = state.revealed.size;
@@ -342,7 +368,7 @@
       updateHUD();
     }
 
-    // Teclado: coordenadas y cashout
+    // Teclado: permite ingresar coordenadas tipo A1, C3
     let keyBuffer = '';
     window.addEventListener('keydown', (e)=>{
       if (state.finished) return;
@@ -350,14 +376,21 @@
       if (k>='A' && k<='Z'){ keyBuffer = k; return; }
       if (/[0-9]/.test(k) && keyBuffer){
         keyBuffer += k;
-        try { const [r,c] = coordToIndex(keyBuffer); reveal(r,c); keyBuffer=''; } catch {}
+        try {
+          const [r,c] = coordToIndex(keyBuffer);
+          reveal(r,c);
+          keyBuffer='';
+        } catch {}
       }
       if (k==='ENTER') cashout();
     });
 
-    // Listeners
+    // Eventos UI
     els.newGame.addEventListener('click', (e)=>{ e.preventDefault(); newGame(); });
-    ['input','change','keyup'].forEach(evt=>{ els.bet.addEventListener(evt, ()=>{ updateHUD(); }); });
+    // Refresca el texto del botón de apostar cuando cambia el input de apuesta
+    ['input','change','keyup'].forEach(evt=>{
+      els.bet.addEventListener(evt, ()=>{ updateHUD(); });
+    });
     els.cashout.addEventListener('click', (e)=>{
       e.preventDefault();
       if (state.finished){ message('No puedes cobrar: no hay una partida activa.', 'warn'); return; }
@@ -368,12 +401,27 @@
     els.confirmClicks.addEventListener('change', ()=> savePrefs());
     els.compactMode.addEventListener('change', ()=>{ document.body.classList.toggle('compact', !!els.compactMode.checked); savePrefs(); paintBoard(); });
     els.haptics.addEventListener('change', ()=> savePrefs());
+    els.resetBalance.addEventListener('click', (e)=>{
+      e.preventDefault();
+      const ok = window.confirm('¿Reiniciar saldo a $100.00?');
+      if (!ok) return;
+      state.balance = 100.00;
+      saveBalance();
+      state.finished = true; // terminar partida actual para evitar estados raros
+      state.busted = false;
+      updateHUD();
+      paintBoard(true);
+      message('Saldo reiniciado a $100.00','warn');
+    });
 
-    // Atajo oculto a $100 (Ctrl/Cmd + Shift + L)
+    // ===== Atajo de teclado: reset oculto a $100 =====
+    // Nota: Ctrl+Shift+R es recarga forzada del navegador y no se puede interceptar de forma fiable.
+    // Usamos Ctrl+Shift+L (o Cmd+Shift+L en Mac) para evitar conflicto.
     window.addEventListener('keydown', (e)=>{
       const isModifier = (e.ctrlKey || e.metaKey) && e.shiftKey;
       const isKey = e.key && (e.key.toLowerCase() === 'l');
       if (!isModifier || !isKey) return;
+      // Requisito: no debe haber partida activa
       if (!state.finished) return;
       e.preventDefault();
       const phrase = window.prompt('Passphrase:');
@@ -383,7 +431,7 @@
       updateHUD();
     });
 
-    // Triple tap secreto en versión (ajuste de saldo)
+    // ===== Secreto: Ajuste de saldo (triple toque en versión) =====
     function normalizeAmount(input){
       if (input == null) return null;
       let s = String(input).trim();
@@ -402,12 +450,16 @@
         tapTimes.push(now);
         if (tapTimes.length >= 3){
           tapTimes.length = 0;
-          if (!state.finished) return;
+          if (!state.finished) return; // Debe estar sin partida activa
           const phrase = window.prompt('Passphrase:');
           if (phrase !== 'coquina') return;
+          // Opción rápida: reset a $100.00 sin avisos
           const quick = window.confirm('¿Poner saldo a $100.00 ahora?');
           if (quick) {
-            state.balance = 100.00; saveBalance(); updateHUD(); return;
+            state.balance = 100.00;
+            saveBalance();
+            updateHUD();
+            return;
           }
           const amtStr = window.prompt('Nuevo saldo (0 - 1000000):');
           const amt = normalizeAmount(amtStr);
@@ -419,7 +471,7 @@
       });
     }
 
-    // Prefs
+    // Cargar preferencias almacenadas
     try{
       const prefs = JSON.parse(localStorage.getItem(LS_PREFS)||'{}');
       if (typeof prefs.showCoords === 'boolean') els.showCoords.checked = prefs.showCoords;
@@ -434,20 +486,115 @@
     updateHUD();
     message('Configura tu apuesta y pulsa “Nueva partida”.');
 
-    // Mini-tests
-    try {
-      for (let r=0;r<5;r++){ for (let c=0;c<5;c++){ const rc = indexToCoord(r,c); const [rr,cc] = coordToIndex(rc); if (rr!==r||cc!==c) throw new Error('roundtrip');}}
-      const vals=[]; for(let x=0;x<=22;x++){ vals.push(fairMultiplierAfterXPicks(25,3,x,0.02)); }
-      for (let i=0;i<vals.length-1;i++){ if (!(vals[i+1]>vals[i])) throw new Error('mono'); }
-    } catch (e){ console.warn('[Mines Remoto] selftests:', e); }
-  } // bootGame
+    // ============================
+    // Pruebas rápidas (no intrusivas)
+    // ============================
+    function runSelfTests(){
+      try {
+        // 1) Roundtrip coordenadas
+        for (let r=0;r<5;r++){
+          for (let c=0;c<5;c++){
+            const rc = indexToCoord(r,c);
+            const [rr,cc] = coordToIndex(rc);
+            if (rr!==r || cc!==c) throw new Error('Fallo roundtrip coordenadas');
+          }
+        }
+        // 2) Monotonía del multiplicador
+        const N = 25; const m = 3; const vals = [];
+        for (let x=0;x<=N-m;x++){ vals.push(fairMultiplierAfterXPicks(N,m,x,0.02)); }
+        for (let i=0;i<vals.length-1;i++){
+          if (!(vals[i+1] > vals[i])) throw new Error('Multiplicador no es estrictamente creciente');
+        }
+        // 3) Aleatoriedad básica de minas (sin duplicados y tamaño correcto)
+        const minesSet = randomMines(3);
+        if (minesSet.size !== 3) throw new Error('randomMines no respeta el tamaño solicitado');
+        // 4) normalizeAmount sanity
+        const na = (x)=>normalizeAmount(x);
+        if (na('') !== null) throw new Error('normalizeAmount vacío');
+        if (na('-5') !== 0) throw new Error('normalizeAmount negativos');
+        if (na('1000001') !== 1000000) throw new Error('normalizeAmount clamp max');
+        // 5) formatMoney
+        if (formatMoney(12.3) !== '$ 12.30') throw new Error('formatMoney falló');
+        // 6) fairMultiplier – x inválido
+        if (fairMultiplierAfterXPicks(25, 3, -1, 0.02) !== 0) throw new Error('fairMultiplier x<0');
+        if (fairMultiplierAfterXPicks(25, 3, 23, 0.02) !== 0) throw new Error('fairMultiplier x>S');
 
-  // 4) Punto de entrada para el loader
-  window.__mines_boot = function(root){
-    injectCSSOnce();
-    // Limpiar el root y montar HTML
-    root.innerHTML = HTML;
-    // Arrancar la app
-    bootGame();
-  };
-})();
+        console.info('[Mines Web] Tests OK');
+      } catch (err){
+        console.error('[Mines Web] Test failed:', err);
+      }
+    }
+    runSelfTests();
+  }; // end local app boot
+
+  // ---- AUTO-UPDATE LOADER (GitHub Pages + app.js) ----
+  (async function(){
+    const LS_UPDATE_URL = 'mines_update_url_v1';
+    const LS_UPDATE_CACHE = 'mines_update_cache_v1';
+
+    async function tryBootFrom(url, allowCache=true){
+      if(!url) return false;
+      try{
+        const bust = (url.includes('?')?'&':'?') + 't=' + Date.now();
+        const res = await fetch(url + bust, {cache:'no-store'});
+        if(!res.ok) throw new Error('HTTP '+res.status);
+        const code = await res.text();
+        try { localStorage.setItem(LS_UPDATE_CACHE, code); } catch {}
+        (new Function(code + '\n//# sourceURL=remote-app.js'))();
+        if(typeof window.__mines_boot === 'function'){
+          document.body.innerHTML = '';
+          window.__mines_boot(document.body);
+          return true;
+        }
+      }catch(err){
+        // fallback to cache
+        if(allowCache){
+          try{
+            const cached = localStorage.getItem(LS_UPDATE_CACHE);
+            if(cached){
+              (new Function(cached + '\n//# sourceURL=remote-app-cache.js'))();
+              if(typeof window.__mines_boot === 'function'){
+                document.body.innerHTML = '';
+                window.__mines_boot(document.body);
+                return true;
+              }
+            }
+          }catch{}
+        }
+      }
+      return false;
+    }
+
+    function getUpdateUrl(){ try{ return localStorage.getItem(LS_UPDATE_URL) || ''; }catch{ return ''; }}
+
+    const booted = await tryBootFrom(getUpdateUrl(), true);
+    if(!booted){
+      // No remote app available, run local app.
+      window.__mines_local_boot();
+    }
+
+    // Secret hotkey: set/clear update URL (Ctrl/Cmd + Shift + U)
+    window.addEventListener('keydown', (e)=>{
+      const mod = (e.ctrlKey || e.metaKey) && e.shiftKey;
+      if(!mod) return;
+      if ((e.key||'').toLowerCase() !== 'u') return;
+      e.preventDefault();
+      const phrase = window.prompt('Passphrase:');
+      if (phrase !== 'coquina') return;
+      const current = getUpdateUrl();
+      const entered = window.prompt('URL de updates (app.js en GitHub Pages). Vacío para limpiar:', current);
+      if (entered === null) return;
+      try{
+        if (entered.trim()){
+          localStorage.setItem(LS_UPDATE_URL, entered.trim());
+          window.alert('URL guardada. Recarga para aplicar.');
+        } else {
+          localStorage.removeItem(LS_UPDATE_URL);
+          window.alert('URL eliminada. Se usará la app local.');
+        }
+      }catch{}
+    });
+  })();
+  </script>
+</body>
+</html>
